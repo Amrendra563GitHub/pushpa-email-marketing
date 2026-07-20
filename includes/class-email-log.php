@@ -17,41 +17,43 @@ class PEM_Email_Log
     }
 
     /**
-     * Save Email Log
-     */
-    public static function save(
-        $campaign_id,
-        $contact_id,
-        $email,
-        $subject,
-        $status
-    ) {
-        global $wpdb;
+ * Save Email Log
+ */
+public static function save(
+    $campaign_id,
+    $contact_id,
+    $email,
+    $subject,
+    $status = 'Pending'
+) {
+    global $wpdb;
 
-        return $wpdb->insert(
-            self::table(),
-            array(
-                'campaign_id' => absint($campaign_id),
-                'contact_id'  => absint($contact_id),
-                'email'       => sanitize_email($email),
-                'subject'     => sanitize_text_field($subject),
-                'status'      => sanitize_text_field($status),
-                'sent_at'     => current_time('mysql'),
-                'opened_at'   => null,
-                'open_count'  => 0
-            ),
-            array(
-                '%d',
-                '%d',
-                '%s',
-                '%s',
-                '%s',
-                '%s',
-                '%s',
-                '%d'
-            )
-        );
-    }
+    $wpdb->insert(
+        self::table(),
+        array(
+            'campaign_id' => absint($campaign_id),
+            'contact_id'  => absint($contact_id),
+            'email'       => sanitize_email($email),
+            'subject'     => sanitize_text_field($subject),
+            'status'      => sanitize_text_field($status),
+            'sent_at'     => current_time('mysql'),
+            'opened_at'   => null,
+            'open_count'  => 0
+        ),
+        array(
+            '%d',
+            '%d',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%s',
+            '%d'
+        )
+    );
+
+    return (int) $wpdb->insert_id;
+}
 
     /**
      * Mark Email Opened
@@ -143,4 +145,125 @@ class PEM_Email_Log
             "SELECT COUNT(*) FROM " . self::table()
         );
     }
+
+    /**
+ * Mark Email Clicked
+ */
+public static function markClicked($id)
+{
+    global $wpdb;
+
+    $log = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM " . self::table() . " WHERE id=%d",
+            absint($id)
+        )
+    );
+
+    if (!$log) {
+        return;
+    }
+
+    $wpdb->update(
+        self::table(),
+        array(
+            'clicked_at' => current_time('mysql'),
+            'click_count' => ((int) $log->click_count + 1)
+        ),
+        array(
+            'id' => absint($id)
+        ),
+        array(
+            '%s',
+            '%d'
+        ),
+        array('%d')
+    );
+}
+
+/**
+ * Unsubscribe Email
+ */
+public static function unsubscribe($id)
+{
+    global $wpdb;
+
+    return $wpdb->update(
+        self::table(),
+        array(
+            'is_unsubscribed' => 1
+        ),
+        array(
+            'id' => absint($id)
+        ),
+        array('%d'),
+        array('%d')
+    );
+}
+
+/**
+ * Get Open Rate
+ */
+public static function getOpenRate($campaign_id)
+{
+    global $wpdb;
+
+    $total = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM " . self::table() . "
+            WHERE campaign_id=%d",
+            absint($campaign_id)
+        )
+    );
+
+    if ($total == 0) {
+        return 0;
+    }
+
+    $opened = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM " . self::table() . "
+            WHERE campaign_id=%d
+            AND open_count>0",
+            absint($campaign_id)
+        )
+    );
+
+    return round(($opened / $total) * 100, 2);
+}
+
+/**
+ * Get Click Rate
+ */
+public static function getClickRate($campaign_id)
+{
+    global $wpdb;
+
+    $total = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM " . self::table() . "
+            WHERE campaign_id=%d",
+            absint($campaign_id)
+        )
+    );
+
+    if ($total == 0) {
+        return 0;
+    }
+
+    $clicked = (int) $wpdb->get_var(
+        $wpdb->prepare(
+            "SELECT COUNT(*)
+            FROM " . self::table() . "
+            WHERE campaign_id=%d
+            AND click_count>0",
+            absint($campaign_id)
+        )
+    );
+
+    return round(($clicked / $total) * 100, 2);
+}
 }

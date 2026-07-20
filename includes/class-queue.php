@@ -47,26 +47,61 @@ class PEM_Queue
         );
     }
 
-    public static function send($campaign,$template,$contact)
-    {
-        $result = PEM_Mailer::send(
-            $contact->email,
-            $campaign->subject,
-            $template->email_body,
-            $contact
-        );
+    /**
+ * Send One Email
+ */
+public static function send($campaign, $template, $contact)
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Create Email Log First
+    |--------------------------------------------------------------------------
+    */
 
-        PEM_Email_Log::save(
-            $campaign->id,
-            $contact->id,
-            $contact->email,
-            $campaign->subject,
-            $result ? 'Success' : 'Failed'
-        );
+    $log_id = PEM_Email_Log::save(
+        $campaign->id,
+        $contact->id,
+        $contact->email,
+        $campaign->subject,
+        'Pending'
+    );
 
-        return $result;
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Send Email
+    |--------------------------------------------------------------------------
+    */
 
+    $result = PEM_Mailer::send(
+        $contact->email,
+        $campaign->subject,
+        $template->email_body,
+        $contact,
+        $log_id
+    );
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Log Status
+    |--------------------------------------------------------------------------
+    */
+
+    global $wpdb;
+
+    $wpdb->update(
+        $wpdb->prefix . 'pushpa_email_logs',
+        array(
+            'status' => $result ? 'Success' : 'Failed'
+        ),
+        array(
+            'id' => $log_id
+        ),
+        array('%s'),
+        array('%d')
+    );
+
+    return $result;
+}
     public static function updateCampaign($campaign_id,$total,$sent,$failed)
     {
         PEM_Campaign::updateCounts(

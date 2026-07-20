@@ -32,15 +32,22 @@ class PEM_Mailer
     /**
      * Send Email
      */
-    public static function send($to, $subject, $message, $contact = null)
-    {
-        // Merge Tags Replace
+    public static function send(
+        $to,
+        $subject,
+        $message,
+        $contact = null,
+        $log_id = 0
+    ) {
+
+        // Replace Merge Tags
         $message = self::parseTemplate($message, $contact);
 
         global $wpdb;
 
         $smtp = $wpdb->get_row(
-            "SELECT * FROM {$wpdb->prefix}pushpa_smtp
+            "SELECT *
+            FROM {$wpdb->prefix}pushpa_smtp
             WHERE status='Active'
             LIMIT 1"
         );
@@ -64,7 +71,31 @@ class PEM_Mailer
                 $headers[] =
                     'Reply-To: ' .
                     $smtp->reply_to;
+
             }
+
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Email Open Tracking Pixel
+        |--------------------------------------------------------------------------
+        */
+
+        if ($log_id > 0) {
+
+            $pixel = add_query_arg(
+                array(
+                    'pem_open' => $log_id
+                ),
+                home_url('/')
+            );
+
+            $message .=
+                '<img src="' .
+                esc_url($pixel) .
+                '" width="1" height="1" style="display:none;" alt="">';
+
         }
 
         return wp_mail(
