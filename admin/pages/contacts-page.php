@@ -77,6 +77,19 @@ Add New
 
 </a>
 
+<a
+href="<?php echo wp_nonce_url(
+    admin_url(
+        'admin.php?page=pushpa-contacts&action=export'
+    ),
+    'pem_export_contacts'
+); ?>"
+class="page-title-action">
+
+Export CSV
+
+</a>
+
 <hr class="wp-header-end">
 
 <div style="

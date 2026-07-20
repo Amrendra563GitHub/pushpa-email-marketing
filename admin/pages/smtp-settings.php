@@ -23,6 +23,30 @@ $data = $wpdb->get_row("SELECT * FROM $table LIMIT 1");
 
 <?php endif; ?>
 
+
+<?php if (isset($_GET['test'])) : ?>
+
+    <?php if ($_GET['test'] === 'success') : ?>
+
+        <div class="notice notice-success is-dismissible">
+            <p><strong>✅ Test Email Sent Successfully.</strong></p>
+        </div>
+
+    <?php elseif ($_GET['test'] === 'failed') : ?>
+
+        <div class="notice notice-error">
+            <p><strong>❌ Failed to Send Test Email.</strong></p>
+        </div>
+
+    <?php elseif ($_GET['test'] === 'invalid') : ?>
+
+        <div class="notice notice-warning">
+            <p><strong>⚠ Please enter a valid email address.</strong></p>
+        </div>
+
+    <?php endif; ?>
+
+<?php endif; ?>
     <form method="post">
 
         <?php wp_nonce_field('pem_save_smtp', 'pem_smtp_nonce'); ?>
@@ -97,5 +121,48 @@ $data = $wpdb->get_row("SELECT * FROM $table LIMIT 1");
         </p>
 
     </form>
+    <hr>
+
+<h2>Send Test Email</h2>
+
+<form method="post">
+
+    <?php wp_nonce_field(
+        'pem_test_smtp',
+        'pem_test_smtp_nonce'
+    ); ?>
+
+    <table class="form-table">
+
+        <tr>
+
+            <th>Test Email</th>
+
+            <td>
+
+                <input
+                    type="email"
+                    name="test_email"
+                    class="regular-text"
+                    placeholder="example@gmail.com"
+                    required>
+
+            </td>
+
+        </tr>
+
+    </table>
+
+    <p>
+
+        <input
+            type="submit"
+            name="pem_test_smtp"
+            class="button button-secondary"
+            value="Send Test Email">
+
+    </p>
+
+</form>
 
 </div>

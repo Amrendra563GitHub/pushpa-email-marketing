@@ -258,6 +258,31 @@ function pem_save_campaign()
         exit;
     }
 
+    /*
+|--------------------------------------------------------------------------
+| Send Immediately
+|--------------------------------------------------------------------------
+*/
+
+// if (
+//     $result !== false &&
+//     $send_type === 'now'
+// ) {
+
+//     $campaign = PEM_Campaign::get(
+//         $campaign_id ?: $wpdb->insert_id
+//     );
+
+//     if ($campaign) {
+
+//         PEM_Queue::processCampaign(
+//             $campaign
+//         );
+
+//     }
+
+// }
+
     wp_safe_redirect(
 
         admin_url(

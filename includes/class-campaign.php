@@ -92,6 +92,7 @@ class PEM_Campaign
  * Get Campaign Preview
  */
 public static function getPreview($id)
+
 {
     global $wpdb;
 
@@ -107,6 +108,60 @@ public static function getPreview($id)
             WHERE c.id = %d",
             absint($id)
         )
+    );
+}
+/**
+ * Update Queue Status
+ */
+public static function updateQueueStatus($id, $status)
+{
+    global $wpdb;
+
+    return $wpdb->update(
+        self::table(),
+        array(
+            'queue_status' => sanitize_text_field($status)
+        ),
+        array(
+            'id' => absint($id)
+        ),
+        array('%s'),
+        array('%d')
+    );
+}
+
+/**
+ * Update Current Email
+ */
+public static function updateCurrentEmail($id, $email)
+{
+    global $wpdb;
+
+    return $wpdb->update(
+        self::table(),
+        array(
+            'current_email' => sanitize_email($email)
+        ),
+        array(
+            'id' => absint($id)
+        ),
+        array('%s'),
+        array('%d')
+    );
+}
+
+/**
+ * Get Running Campaign
+ */
+public static function getRunningCampaign()
+{
+    global $wpdb;
+
+    return $wpdb->get_row(
+        "SELECT *
+        FROM " . self::table() . "
+        WHERE queue_status='Running'
+        LIMIT 1"
     );
 }
 }

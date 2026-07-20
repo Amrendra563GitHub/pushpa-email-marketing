@@ -103,7 +103,13 @@ if ($selected_campaign) {
 
                             <?php foreach ($campaigns as $campaign) : ?>
 
-                                <option value="<?php echo esc_attr($campaign->id); ?>">
+                                <option
+    value="<?php echo esc_attr($campaign->id); ?>"
+    <?php selected(
+        $selected_campaign ? $selected_campaign->id : 0,
+        $campaign->id
+    ); ?>
+>
 
                                     <?php echo esc_html($campaign->campaign_name); ?>
 

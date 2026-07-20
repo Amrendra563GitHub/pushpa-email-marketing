@@ -34,6 +34,16 @@ function pem_create_campaigns_table()
 
         last_run DATETIME NULL,
 
+        started_at DATETIME NULL,
+
+paused_at DATETIME NULL,
+
+completed_at DATETIME NULL,
+
+current_email VARCHAR(255) NULL,
+
+queue_status VARCHAR(20) DEFAULT 'Idle',
+
         total_contacts INT DEFAULT 0,
 
         sent_count INT DEFAULT 0,
@@ -50,7 +60,7 @@ function pem_create_campaigns_table()
 
         KEY send_type (send_type),
 
-        KEY scheduled_at (scheduled_at)
+        KEY scheduled_at (scheduled_at),
         
         KEY scheduler (status, send_type, scheduled_at)
 
@@ -59,4 +69,32 @@ function pem_create_campaigns_table()
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
     dbDelta($sql);
+
+    $columns = array(
+
+    'started_at'    => "ALTER TABLE $table ADD started_at DATETIME NULL",
+
+    'paused_at'     => "ALTER TABLE $table ADD paused_at DATETIME NULL",
+
+    'completed_at'  => "ALTER TABLE $table ADD completed_at DATETIME NULL",
+
+    'current_email' => "ALTER TABLE $table ADD current_email VARCHAR(255) NULL",
+
+    'queue_status'  => "ALTER TABLE $table ADD queue_status VARCHAR(20) DEFAULT 'Idle'"
+
+);
+
+foreach ($columns as $column => $query) {
+
+    $exists = $wpdb->get_results(
+        "SHOW COLUMNS FROM $table LIKE '$column'"
+    );
+
+    if (empty($exists)) {
+
+        $wpdb->query($query);
+
+    }
+
+}
 }

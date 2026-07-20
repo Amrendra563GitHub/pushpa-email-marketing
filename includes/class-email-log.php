@@ -36,7 +36,9 @@ class PEM_Email_Log
                 'email'       => sanitize_email($email),
                 'subject'     => sanitize_text_field($subject),
                 'status'      => sanitize_text_field($status),
-                'sent_at'     => current_time('mysql')
+                'sent_at'     => current_time('mysql'),
+                'opened_at'   => null,
+                'open_count'  => 0
             ),
             array(
                 '%d',
@@ -44,8 +46,60 @@ class PEM_Email_Log
                 '%s',
                 '%s',
                 '%s',
-                '%s'
+                '%s',
+                '%s',
+                '%d'
             )
+        );
+    }
+
+    /**
+     * Mark Email Opened
+     */
+    public static function markOpened($id)
+    {
+        global $wpdb;
+
+        $log = $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT * FROM " . self::table() . " WHERE id=%d",
+                absint($id)
+            )
+        );
+
+        if (!$log) {
+            return;
+        }
+
+        $wpdb->update(
+            self::table(),
+            array(
+                'opened_at' => current_time('mysql'),
+                'open_count' => ((int)$log->open_count + 1)
+            ),
+            array(
+                'id' => absint($id)
+            ),
+            array(
+                '%s',
+                '%d'
+            ),
+            array(
+                '%d'
+            )
+        );
+    }
+
+    /**
+     * Total Opens
+     */
+    public static function totalOpened()
+    {
+        global $wpdb;
+
+        return (int)$wpdb->get_var(
+            "SELECT COUNT(*) FROM " . self::table() . "
+            WHERE open_count > 0"
         );
     }
 
@@ -70,7 +124,9 @@ class PEM_Email_Log
 
         return $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM " . self::table() . " WHERE campaign_id = %d ORDER BY id DESC",
+                "SELECT * FROM " . self::table() . "
+                WHERE campaign_id=%d
+                ORDER BY id DESC",
                 absint($campaign_id)
             )
         );
@@ -83,7 +139,7 @@ class PEM_Email_Log
     {
         global $wpdb;
 
-        return (int) $wpdb->get_var(
+        return (int)$wpdb->get_var(
             "SELECT COUNT(*) FROM " . self::table()
         );
     }

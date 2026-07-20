@@ -1,91 +1,114 @@
-jQuery(document).ready(function ($) {
+<?php
 
-    let offset = 0;
-    let limit = 25;
+if (!defined('ABSPATH')) {
+    exit;
+}
 
-    let sent = 0;
-    let failed = 0;
+add_action('wp_ajax_pem_bulk_email_process', 'pem_bulk_email_process');
 
-    $('#pem-start-bulk-email').on('click', function (e) {
+function pem_bulk_email_process()
+{
+    check_ajax_referer('pem_bulk_email_nonce', 'security');
 
-        e.preventDefault();
+    if (!current_user_can('manage_options')) {
 
-        offset = 0;
-        sent = 0;
-        failed = 0;
-
-        processBatch();
-
-    });
-
-    function processBatch() {
-
-        $.ajax({
-
-            url: ajaxurl,
-
-            type: 'POST',
-
-            dataType: 'json',
-
-            data: {
-
-                action: 'pem_bulk_email_process',
-
-                security: pemBulk.nonce,
-
-                campaign_id: $('#campaign_id').val(),
-
-                offset: offset,
-
-                limit: limit
-
-            },
-
-            success: function (response) {
-
-                if (!response.success) {
-
-                    alert(response.data.message);
-
-                    return;
-
-                }
-
-                offset += response.data.processed;
-
-                sent += response.data.sent;
-
-                failed += response.data.failed;
-
-                $('#pem-sent-count').text(sent);
-
-                $('#pem-failed-count').text(failed);
-
-                let total = parseInt($('#pem-total-count').text());
-
-                let processed = sent + failed;
-
-                $('#pem-remaining-count').text(total - processed);
-
-                let percent = Math.round((processed / total) * 100);
-
-                $('#pem-progress').val(percent);
-
-                if (response.data.processed == limit) {
-
-                    processBatch();
-
-                } else {
-
-                    alert('Bulk Email Completed');
-
-                }
-
-            }
-
-        });
+        wp_send_json_error(array(
+            'message' => 'Permission denied.'
+        ));
 
     }
 
-});
+    $campaign_id = absint($_POST['campaign_id'] ?? 0);
+    $offset      = absint($_POST['offset'] ?? 0);
+    $limit       = absint($_POST['limit'] ?? 25);
+
+    if (!$campaign_id) {
+
+        wp_send_json_error(array(
+            'message' => 'Invalid Campaign.'
+        ));
+
+    }
+
+    $campaign = PEM_Campaign::get($campaign_id);
+
+    if (!$campaign) {
+
+        wp_send_json_error(array(
+            'message' => 'Campaign not found.'
+        ));
+
+    }
+
+    $template = PEM_Template::get($campaign->template_id);
+
+    if (!$template) {
+
+        wp_send_json_error(array(
+            'message' => 'Template not found.'
+        ));
+
+    }
+
+    global $wpdb;
+
+    $contacts = $wpdb->get_results(
+
+        $wpdb->prepare(
+
+            "SELECT *
+            FROM {$wpdb->prefix}pushpa_contacts
+            WHERE status='Active'
+            LIMIT %d OFFSET %d",
+
+            $limit,
+            $offset
+
+        )
+
+    );
+
+    $processed = 0;
+    $sent      = 0;
+    $failed    = 0;
+
+    foreach ($contacts as $contact) {
+
+        $processed++;
+
+        if (!is_email($contact->email)) {
+
+            $failed++;
+
+            continue;
+
+        }
+
+        $result = PEM_Queue::send(
+            $campaign,
+            $template,
+            $contact
+        );
+
+        if ($result) {
+
+            $sent++;
+
+        } else {
+
+            $failed++;
+
+        }
+
+    }
+
+    wp_send_json_success(array(
+
+        'processed' => $processed,
+
+        'sent'      => $sent,
+
+        'failed'    => $failed
+
+    ));
+}

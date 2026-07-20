@@ -63,11 +63,18 @@ require_once PEM_PATH . 'admin/handlers/save-campaign.php';
 require_once PEM_PATH . 'admin/handlers/delete-campaign.php';
 require_once PEM_PATH . 'admin/handlers/send-email.php';
 require_once PEM_PATH . 'admin/handlers/send-bulk-email.php';
+require_once PEM_PATH . 'admin/handlers/export-contacts.php';
+require_once PEM_PATH . 'admin/handlers/test-smtp.php';
+// require_once PEM_PATH . 'admin/handlers/open-tracking.php';
+
+
+
 // require_once PEM_PATH . 'admin/pages/smtp-settings.php';
 // require_once PEM_PATH . 'admin/pages/settings.php';
 require_once PEM_PATH . 'admin/handlers/save-settings.php';
 require_once PEM_PATH . 'admin/handlers/save-smtp.php';
 require_once PEM_PATH . 'admin/ajax/bulk-email-process.php';
+require_once PEM_PATH . 'admin/ajax/send-bulk-email.php';
 
 require_once PEM_PATH . 'database/create-table.php';
 require_once PEM_PATH . 'database/create-template-table.php';

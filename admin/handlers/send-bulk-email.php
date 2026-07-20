@@ -103,12 +103,40 @@ function pem_send_bulk_email()
     $contacts = PEM_Contact::getActiveByGroup(
         $group
     );
+    /*
+|--------------------------------------------------------------------------
+| Batch Settings
+|--------------------------------------------------------------------------
+*/
+
+$batch_size = absint($_POST['batch_size'] ?? 50);
+
+if ($batch_size <= 0) {
+    $batch_size = 50;
+}
+
+$delay = absint($_POST['delay'] ?? 0);
+
+/*
+|--------------------------------------------------------------------------
+| Limit Contacts
+|--------------------------------------------------------------------------
+*/
+
+$contacts = array_slice(
+    $contacts,
+    0,
+    $batch_size
+);
+
 
     $total  = count($contacts);
 
     $sent   = 0;
 
     $failed = 0;
+
+    
 
     /*
     |--------------------------------------------------------------------------
@@ -147,6 +175,9 @@ function pem_send_bulk_email()
             $sent,
             $failed
         );
+        if ($delay > 0) {
+    sleep($delay);
+}
 
     }
 

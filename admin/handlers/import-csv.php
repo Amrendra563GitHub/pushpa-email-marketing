@@ -36,6 +36,12 @@ function pem_import_csv_handler()
         exit;
     }
 
+    $start_time = microtime(true);
+
+    $file_name = sanitize_file_name(
+        $_FILES['csv_file']['name']
+    );
+
     $file = fopen($_FILES['csv_file']['tmp_name'], 'r');
 
     if (!$file) {
@@ -49,13 +55,16 @@ function pem_import_csv_handler()
         exit;
     }
 
-    // Skip CSV Header
+    // Skip Header
     fgetcsv($file);
 
-    $imported = 0;
-    $skipped = 0;
+    $total_rows = 0;
+    $imported   = 0;
+    $skipped    = 0;
 
     while (($row = fgetcsv($file)) !== false) {
+
+        $total_rows++;
 
         $data = array(
             'name'    => sanitize_text_field($row[0] ?? ''),
@@ -85,14 +94,22 @@ function pem_import_csv_handler()
 
     fclose($file);
 
+    $import_time = round(
+        microtime(true) - $start_time,
+        2
+    );
+
     wp_safe_redirect(
 
         add_query_arg(
 
             array(
-                'page' => 'pushpa-import-csv',
-                'imported' => $imported,
-                'skipped' => $skipped
+                'page'      => 'pushpa-import-csv',
+                'file'      => $file_name,
+                'total'     => $total_rows,
+                'imported'  => $imported,
+                'skipped'   => $skipped,
+                'time'      => $import_time
             ),
 
             admin_url('admin.php')
@@ -104,4 +121,7 @@ function pem_import_csv_handler()
     exit;
 }
 
-add_action('admin_init', 'pem_import_csv_handler');
+add_action(
+    'admin_init',
+    'pem_import_csv_handler'
+);

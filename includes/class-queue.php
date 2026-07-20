@@ -6,71 +6,48 @@ if (!defined('ABSPATH')) {
 
 class PEM_Queue
 {
-    /**
-     * Get Active Contacts
-     */
     public static function getContacts()
     {
         global $wpdb;
 
         return $wpdb->get_results(
-            "SELECT *
-            FROM {$wpdb->prefix}pushpa_contacts
-            WHERE status='Active'
-            ORDER BY id ASC"
+            "SELECT * FROM {$wpdb->prefix}pushpa_contacts
+             WHERE status='Active'
+             ORDER BY id ASC"
         );
     }
-    /**
- * Get Contacts By Group
- */
-public static function getContactsByGroup($group = 'all')
-{
-    global $wpdb;
 
-    if (
-    empty($group) ||
-    strtolower($group) === 'all'
-) {
+    public static function getContactsByGroup($group='all')
+    {
+        global $wpdb;
 
-        return self::getContacts();
+        if (empty($group) || strtolower($group)==='all') {
+            return self::getContacts();
+        }
 
+        return $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT * FROM {$wpdb->prefix}pushpa_contacts
+                 WHERE status='Active'
+                 AND contact_group=%s
+                 ORDER BY id ASC",
+                $group
+            )
+        );
     }
 
-    return $wpdb->get_results(
-
-        $wpdb->prepare(
-
-            "SELECT *
-            FROM {$wpdb->prefix}pushpa_contacts
-            WHERE status='Active'
-            AND contact_group=%s
-            ORDER BY id ASC",
-
-            $group
-
-        )
-
-    );
-}
-
-    /**
-     * Total Contacts
-     */
     public static function totalContacts()
     {
         global $wpdb;
 
-        return (int) $wpdb->get_var(
+        return (int)$wpdb->get_var(
             "SELECT COUNT(*)
-            FROM {$wpdb->prefix}pushpa_contacts
-            WHERE status='Active'"
+             FROM {$wpdb->prefix}pushpa_contacts
+             WHERE status='Active'"
         );
     }
 
-    /**
-     * Send One Email
-     */
-    public static function send($campaign, $template, $contact)
+    public static function send($campaign,$template,$contact)
     {
         $result = PEM_Mailer::send(
             $contact->email,
@@ -90,15 +67,8 @@ public static function getContactsByGroup($group = 'all')
         return $result;
     }
 
-    /**
-     * Update Campaign Progress
-     */
-    public static function updateCampaign(
-        $campaign_id,
-        $total,
-        $sent,
-        $failed
-    ) {
+    public static function updateCampaign($campaign_id,$total,$sent,$failed)
+    {
         PEM_Campaign::updateCounts(
             $campaign_id,
             $total,
@@ -107,95 +77,162 @@ public static function getContactsByGroup($group = 'all')
         );
     }
 
-    /**
-     * Complete Campaign
-     */
     public static function complete($campaign_id)
-{
-    global $wpdb;
+    {
+        global $wpdb;
 
-    $wpdb->update(
-        $wpdb->prefix . 'pushpa_campaigns',
-        array(
-            'status'   => 'Completed',
-            'last_run' => current_time('mysql')
-        ),
-        array(
-            'id' => $campaign_id
-        ),
-        array(
-            '%s',
-            '%s'
-        ),
-        array('%d')
-    );
-}
-    /**
- * Process Scheduled Campaign
- */
-public static function processCampaign($campaign)
-{
-    $template = PEM_Template::get(
-        $campaign->template_id
-    );
-
-    if (!$template) {
-        return;
+        $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array(
+                'status'=>'Completed',
+                'queue_status'=>'Completed',
+                'completed_at'=>current_time('mysql'),
+                'last_run'=>current_time('mysql')
+            ),
+            array('id'=>$campaign_id),
+            array('%s','%s','%s','%s'),
+            array('%d')
+        );
     }
 
-    $group = !empty($campaign->recipient_type)
-    ? $campaign->recipient_type
-    : 'all';
+    public static function processCampaign($campaign)
+    {
+        $template = PEM_Template::get($campaign->template_id);
 
-$contacts = self::getContactsByGroup($group);
-
-    $total  = count($contacts);
-
-    $sent   = 0;
-
-    $failed = 0;
-
-    PEM_Campaign::updateStatus(
-        $campaign->id,
-        'Running'
-    );
-
-    foreach ($contacts as $contact) {
-
-        if (!is_email($contact->email)) {
-
-            $failed++;
-
-            continue;
+        if (!$template) {
+            return;
         }
 
-        $result = self::send(
-            $campaign,
-            $template,
-            $contact
+        $contacts = self::getContactsByGroup(
+            !empty($campaign->recipient_type)
+                ? $campaign->recipient_type
+                : 'all'
         );
 
-        if ($result) {
+        $total = count($contacts);
+        $sent = 0;
+        $failed = 0;
 
-            $sent++;
+        self::start($campaign->id);
 
-        } else {
+        foreach ($contacts as $contact) {
 
-            $failed++;
+            self::updateCurrentEmail(
+                $campaign->id,
+                $contact->email
+            );
 
+            if (!is_email($contact->email)) {
+                $failed++;
+                continue;
+            }
+
+            if (self::send($campaign,$template,$contact)) {
+                $sent++;
+            } else {
+                $failed++;
+            }
+
+            self::updateCampaign(
+                $campaign->id,
+                $total,
+                $sent,
+                $failed
+            );
         }
 
-        self::updateCampaign(
-            $campaign->id,
-            $total,
-            $sent,
-            $failed
-        );
-
+        self::complete($campaign->id);
     }
 
-    self::complete(
-        $campaign->id
-    );
-}
+    public static function start($campaign_id)
+    {
+        global $wpdb;
+
+        return $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array(
+                'queue_status'=>'Running',
+                'status'=>'Running',
+                'started_at'=>current_time('mysql')
+            ),
+            array('id'=>$campaign_id),
+            array('%s','%s','%s'),
+            array('%d')
+        );
+    }
+
+    public static function pause($campaign_id)
+    {
+        global $wpdb;
+
+        return $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array(
+                'queue_status'=>'Paused',
+                'paused_at'=>current_time('mysql')
+            ),
+            array('id'=>$campaign_id),
+            array('%s','%s'),
+            array('%d')
+        );
+    }
+
+    public static function resume($campaign_id)
+    {
+        global $wpdb;
+
+        return $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array('queue_status'=>'Running'),
+            array('id'=>$campaign_id),
+            array('%s'),
+            array('%d')
+        );
+    }
+
+    public static function stop($campaign_id)
+    {
+        global $wpdb;
+
+        return $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array(
+                'queue_status'=>'Stopped',
+                'status'=>'Stopped',
+                'completed_at'=>current_time('mysql')
+            ),
+            array('id'=>$campaign_id),
+            array('%s','%s','%s'),
+            array('%d')
+        );
+    }
+
+    public static function updateCurrentEmail($campaign_id,$email)
+    {
+        global $wpdb;
+
+        return $wpdb->update(
+            $wpdb->prefix.'pushpa_campaigns',
+            array(
+                'current_email'=>sanitize_email($email)
+            ),
+            array('id'=>$campaign_id),
+            array('%s'),
+            array('%d')
+        );
+    }
+
+    public static function getQueue($campaign_id)
+    {
+        global $wpdb;
+
+        return $wpdb->get_row(
+            $wpdb->prepare(
+                "SELECT *
+                 FROM {$wpdb->prefix}pushpa_campaigns
+                 WHERE id=%d",
+                $campaign_id
+            )
+        );
+    }
 }

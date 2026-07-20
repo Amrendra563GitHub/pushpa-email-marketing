@@ -107,6 +107,7 @@ wp_nonce_field(
 <td>
 
 <select
+id="campaign_id"
 name="campaign_id"
 class="regular-text"
 required>
@@ -209,8 +210,8 @@ class="regular-text">
 <p>
 
 <input
-type="submit"
-name="pem_send_bulk_email"
+type="button"
+id="pem-start-bulk-email"
 class="button button-primary button-large"
 value="🚀 Start Bulk Email">
 
@@ -222,12 +223,24 @@ value="🚀 Start Bulk Email">
 
 <h2>Progress</h2>
 
-<progress
-id="pem-progress"
-value="0"
-max="100"
-style="width:100%;height:22px;">
-</progress>
+<div style="width:100%;background:#e5e5e5;height:25px;border-radius:4px;overflow:hidden;">
+
+    <div
+        id="pem-progress-bar"
+        style="
+            width:0%;
+            height:25px;
+            background:#2271b1;
+            color:#fff;
+            text-align:center;
+            line-height:25px;
+            font-weight:bold;
+            transition:width .3s;
+        ">
+        0%
+    </div>
+
+</div>
 
 <table
 class="widefat striped"

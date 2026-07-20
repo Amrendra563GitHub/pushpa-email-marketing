@@ -83,6 +83,15 @@ function pem_admin_menu()
     );
 
     add_submenu_page(
+    null,
+    'Campaign Report',
+    'Campaign Report',
+    'manage_options',
+    'pushpa-campaign-report',
+    'pem_campaign_report_page'
+);
+
+    add_submenu_page(
         'pushpa-email',
         'Send Test Email',
         'Send Test Email',
@@ -205,6 +214,10 @@ function pem_smtp_page()
 {
     require_once PEM_PATH . 'admin/pages/smtp-settings.php';
 }
+function pem_campaign_report_page()
+{
+    require_once PEM_PATH . 'admin/pages/campaign-report.php';
+}
 /*
 |--------------------------------------------------------------------------
 | Admin Scripts
@@ -235,26 +248,3 @@ function pem_admin_scripts($hook)
 }
 
 add_action('admin_enqueue_scripts', 'pem_admin_scripts');
-
-function pem_admin_scripts($hook)
-{
-    if (strpos($hook, 'pushpa') === false) {
-        return;
-    }
-
-    wp_enqueue_script(
-        'pem-bulk-email',
-        PEM_URL . 'assets/js/bulk-email.js',
-        array('jquery'),
-        PEM_VERSION,
-        true
-    );
-
-    wp_localize_script(
-        'pem-bulk-email',
-        'pemBulk',
-        array(
-            'nonce' => wp_create_nonce('pem_bulk_nonce')
-        )
-    );
-}

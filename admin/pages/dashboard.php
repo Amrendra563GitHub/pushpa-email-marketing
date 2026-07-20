@@ -31,7 +31,31 @@ $failed = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_email_logs
     WHERE status='Failed'"
 );
+$running = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_campaigns
+    WHERE status='Running'"
+);
 
+$completed = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_campaigns
+    WHERE status='Completed'"
+);
+
+$draft = (int) $wpdb->get_var(
+    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_campaigns
+    WHERE status='Draft'"
+);
+
+$success_rate = 0;
+
+if ($total_logs > 0) {
+
+    $success_rate = round(
+        ($success / $total_logs) * 100,
+        2
+    );
+
+}
 $smtp = $wpdb->get_row(
     "SELECT * FROM {$wpdb->prefix}pushpa_smtp
     WHERE status='Active'
@@ -46,7 +70,7 @@ $recent_campaigns = $wpdb->get_results(
 );
 
 $recent_logs = $wpdb->get_results(
-    "SELECT email,status,created_at
+    "SELECT email,status,sent_at
     FROM {$wpdb->prefix}pushpa_email_logs
     ORDER BY id DESC
     LIMIT 10"
@@ -74,13 +98,24 @@ Welcome,
 
 $cards = array(
 
-array("👥 Total Contacts",$total_contacts,"#2271b1"),
-array("📧 Templates",$total_templates,"#2271b1"),
-array("🚀 Campaigns",$total_campaigns,"#2271b1"),
-array("📨 Email Logs",$total_logs,"#2271b1"),
-array("✅ Emails Sent",$success,"green"),
-array("❌ Failed",$failed,"red"),
-array("📤 SMTP",$smtp ? "Connected" : "Not Configured",$smtp ? "green" : "red")
+array("👥 Total Contacts", $total_contacts, "#2271b1"),
+array("📧 Templates", $total_templates, "#673ab7"),
+array("🚀 Campaigns", $total_campaigns, "#ff9800"),
+array("📨 Email Logs", $total_logs, "#009688"),
+
+array("✅ Emails Sent", $success, "#4CAF50"),
+array("❌ Failed", $failed, "#f44336"),
+array("📊 Success Rate", $success_rate . "%", "#3f51b5"),
+
+array("🟢 Running", $running, "#ff9800"),
+array("🏁 Completed", $completed, "#4CAF50"),
+array("📝 Draft", $draft, "#9e9e9e"),
+
+array(
+    "📤 SMTP",
+    $smtp ? "Connected" : "Not Configured",
+    $smtp ? "#4CAF50" : "#f44336"
+)
 
 );
 
@@ -89,14 +124,17 @@ foreach($cards as $card){
 ?>
 
 <div style="
-width:220px;
+width:240px;
+min-height:120px;
+border-radius:10px;
 background:#fff;
 padding:20px;
 border-left:5px solid <?php echo esc_attr($card[2]); ?>;
 box-shadow:0 1px 3px rgba(0,0,0,.1);
 ">
 
-<h2 style="margin:0;font-size:30px;">
+<h2 style="margin:0;font-size:34px;
+font-weight:bold;">
 
 <?php echo esc_html($card[1]); ?>
 
@@ -236,7 +274,7 @@ Failed
 
 </td>
 
-<td><?php echo esc_html($log->created_at); ?></td>
+<td><?php echo esc_html($log->sent_at); ?></td>
 
 </tr>
 

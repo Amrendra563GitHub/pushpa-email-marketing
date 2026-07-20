@@ -221,6 +221,16 @@ Delete
 
 </a>
 
+<a
+href="<?php echo admin_url(
+'admin.php?page=pushpa-campaign-report&id=' . $campaign->id
+); ?>"
+class="button button-small">
+
+Report
+
+</a>
+
 </td>
 
 </tr>

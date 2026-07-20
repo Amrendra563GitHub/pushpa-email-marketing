@@ -33,45 +33,45 @@ class PEM_Mailer
      * Send Email
      */
     public static function send($to, $subject, $message, $contact = null)
-{
-    // Merge Tags Replace
-    $message = self::parseTemplate($message, $contact);
+    {
+        // Merge Tags Replace
+        $message = self::parseTemplate($message, $contact);
 
-    global $wpdb;
+        global $wpdb;
 
-    $smtp = $wpdb->get_row(
-        "SELECT * FROM {$wpdb->prefix}pushpa_smtp
-        WHERE status='Active'
-        LIMIT 1"
-    );
+        $smtp = $wpdb->get_row(
+            "SELECT * FROM {$wpdb->prefix}pushpa_smtp
+            WHERE status='Active'
+            LIMIT 1"
+        );
 
-    $headers = array(
-        'MIME-Version: 1.0',
-        'Content-Type: text/html; charset=UTF-8'
-    );
+        $headers = array(
+            'MIME-Version: 1.0',
+            'Content-Type: text/html; charset=UTF-8'
+        );
 
-    if ($smtp) {
-
-        $headers[] =
-            'From: ' .
-            $smtp->from_name .
-            ' <' .
-            $smtp->from_email .
-            '>';
-
-        if (!empty($smtp->reply_to)) {
+        if ($smtp) {
 
             $headers[] =
-                'Reply-To: ' .
-                $smtp->reply_to;
-        }
-    }
+                'From: ' .
+                $smtp->from_name .
+                ' <' .
+                $smtp->from_email .
+                '>';
 
-    return wp_mail(
-        $to,
-        $subject,
-        $message,
-        $headers
-    );
-}
+            if (!empty($smtp->reply_to)) {
+
+                $headers[] =
+                    'Reply-To: ' .
+                    $smtp->reply_to;
+            }
+        }
+
+        return wp_mail(
+            $to,
+            $subject,
+            $message,
+            $headers
+        );
+    }
 }
