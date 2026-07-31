@@ -51,6 +51,8 @@ public static function save(
             '%d'
         )
     );
+    error_log('INSERT ID = ' . $wpdb->insert_id);
+error_log('LAST ERROR = ' . $wpdb->last_error);
 
     return (int) $wpdb->insert_id;
 }
@@ -59,38 +61,58 @@ public static function save(
      * Mark Email Opened
      */
     public static function markOpened($id)
-    {
-        global $wpdb;
+{
+    global $wpdb;
 
-        $log = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM " . self::table() . " WHERE id=%d",
-                absint($id)
-            )
-        );
+    $id = absint($id);
 
-        if (!$log) {
-            return;
-        }
-
-        $wpdb->update(
-            self::table(),
-            array(
-                'opened_at' => current_time('mysql'),
-                'open_count' => ((int)$log->open_count + 1)
-            ),
-            array(
-                'id' => absint($id)
-            ),
-            array(
-                '%s',
-                '%d'
-            ),
-            array(
-                '%d'
-            )
-        );
+    if ($id <= 0) {
+        return false;
     }
+
+    $log = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT * FROM " . self::table() . " WHERE id = %d",
+            $id
+        )
+    );
+
+    if (!$log) {
+
+        error_log('PEM: Email log not found. ID = ' . $id);
+
+        return false;
+    }
+
+    $result = $wpdb->update(
+        self::table(),
+        array(
+            'opened_at' => current_time('mysql'),
+            'open_count' => ((int) $log->open_count + 1)
+        ),
+        array(
+            'id' => $id
+        ),
+        array(
+            '%s',
+            '%d'
+        ),
+        array(
+            '%d'
+        )
+    );
+
+    if ($result === false) {
+
+        error_log('PEM Open Tracking Error: ' . $wpdb->last_error);
+
+        return false;
+    }
+
+    error_log('PEM Open Tracking Success. Log ID = ' . $id);
+
+    return true;
+}
 
     /**
      * Total Opens
@@ -153,6 +175,8 @@ public static function markClicked($id)
 {
     global $wpdb;
 
+    error_log('markClicked() CALLED. ID = ' . $id);
+
     $log = $wpdb->get_row(
         $wpdb->prepare(
             "SELECT * FROM " . self::table() . " WHERE id=%d",
@@ -161,26 +185,26 @@ public static function markClicked($id)
     );
 
     if (!$log) {
+        error_log('LOG NOT FOUND');
         return;
     }
 
-    $wpdb->update(
+    $result = $wpdb->update(
         self::table(),
         array(
             'clicked_at' => current_time('mysql'),
-            'click_count' => ((int) $log->click_count + 1)
+            'click_count' => ((int)$log->click_count + 1)
         ),
         array(
             'id' => absint($id)
         ),
-        array(
-            '%s',
-            '%d'
-        ),
+        array('%s', '%d'),
         array('%d')
     );
-}
 
+    error_log('UPDATE RESULT = ' . print_r($result, true));
+    error_log('LAST ERROR = ' . $wpdb->last_error);
+}
 /**
  * Unsubscribe Email
  */
@@ -265,5 +289,33 @@ public static function getClickRate($campaign_id)
     );
 
     return round(($clicked / $total) * 100, 2);
+}
+
+/**
+ * Total Clicked Emails
+ */
+public static function totalClicked()
+{
+    global $wpdb;
+
+    return (int) $wpdb->get_var(
+        "SELECT COUNT(*)
+        FROM " . self::table() . "
+        WHERE click_count > 0"
+    );
+}
+
+/**
+ * Total Unsubscribed
+ */
+public static function totalUnsubscribed()
+{
+    global $wpdb;
+
+    return (int) $wpdb->get_var(
+        "SELECT COUNT(*)
+        FROM " . self::table() . "
+        WHERE is_unsubscribed = 1"
+    );
 }
 }

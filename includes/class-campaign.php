@@ -164,4 +164,15 @@ public static function getRunningCampaign()
         LIMIT 1"
     );
 }
+/**
+ * Total Campaigns
+ */
+public static function count()
+{
+    global $wpdb;
+
+    return (int) $wpdb->get_var(
+        "SELECT COUNT(*) FROM " . self::table()
+    );
+}
 }

@@ -66,6 +66,10 @@ public static function send($campaign, $template, $contact)
         'Pending'
     );
 
+    error_log('QUEUE LOG ID = ' . $log_id);
+    error_log('Calling Mailer with LOG ID = ' . $log_id);
+    
+
     /*
     |--------------------------------------------------------------------------
     | Send Email
@@ -79,6 +83,8 @@ public static function send($campaign, $template, $contact)
         $contact,
         $log_id
     );
+
+    
 
     /*
     |--------------------------------------------------------------------------

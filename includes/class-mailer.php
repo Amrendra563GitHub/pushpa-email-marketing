@@ -30,6 +30,53 @@ class PEM_Mailer
     }
 
     /**
+ * Replace Links with Click Tracking Links
+ */
+public static function parseLinks($message, $log_id = 0)
+{
+    error_log('============= PARSE LINKS =============');
+    error_log('LOG ID = ' . $log_id);
+    error_log($message);
+
+    if ($log_id <= 0) {
+        return $message;
+    }
+
+    $message = preg_replace_callback(
+        '/<a\s+[^>]*href=["\']([^"\']+)["\']/i',
+        function ($matches) use ($log_id) {
+
+            $original = $matches[1];
+
+            error_log('FOUND LINK = ' . $original);
+
+            $tracking = add_query_arg(
+                array(
+                    'pem_click' => $log_id,
+                    'url'       => rawurlencode($original)
+                ),
+                home_url('/')
+            );
+
+            error_log('TRACKING LINK = ' . $tracking);
+
+            return str_replace(
+                $original,
+                esc_url($tracking),
+                $matches[0]
+            );
+
+        },
+        $message
+    );
+
+    error_log('FINAL HTML = ');
+    error_log($message);
+
+    return $message;
+}
+
+    /**
      * Send Email
      */
     public static function send(
@@ -42,6 +89,8 @@ class PEM_Mailer
 
         // Replace Merge Tags
         $message = self::parseTemplate($message, $contact);
+        // Replace Links
+        $message = self::parseLinks($message, $log_id);
 
         global $wpdb;
 
@@ -75,12 +124,15 @@ class PEM_Mailer
             }
 
         }
+        error_log('MAILER LOG ID = ' . $log_id);
 
         /*
         |--------------------------------------------------------------------------
         | Email Open Tracking Pixel
         |--------------------------------------------------------------------------
         */
+
+        error_log('PEM LOG ID = ' . $log_id);
 
         if ($log_id > 0) {
 

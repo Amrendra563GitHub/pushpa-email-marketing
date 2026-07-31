@@ -6,21 +6,41 @@ if (!defined('ABSPATH')) {
 
 global $wpdb;
 
-$total_contacts = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_contacts"
-);
+// $stats = PEM_Dashboard::stats();
 
-$total_campaigns = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_campaigns"
-);
+// $total_contacts     = $stats['contacts'];
+// $total_campaigns    = $stats['campaigns'];
+// $total_templates    = $stats['templates'];
+// $total_logs         = $stats['logs'];
+// $total_opened       = $stats['opened'];
+// $total_clicked      = $stats['clicked'];
+// $total_unsubscribed = $stats['unsubscribed'];
 
-$total_templates = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_templates"
-);
+$stats = PEM_Dashboard::stats();
 
-$total_logs = (int) $wpdb->get_var(
-    "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_email_logs"
-);
+$total_contacts      = $stats['contacts'];
+$total_campaigns     = $stats['campaigns'];
+$total_templates     = $stats['templates'];
+$total_logs          = $stats['logs'];
+$total_opened        = $stats['opened'];
+$total_clicked       = $stats['clicked'];
+$total_unsubscribed  = $stats['unsubscribed'];
+
+// $total_contacts = (int) $wpdb->get_var(
+//     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_contacts"
+// );
+
+// $total_campaigns = (int) $wpdb->get_var(
+//     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_campaigns"
+// );
+
+// $total_templates = (int) $wpdb->get_var(
+//     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_templates"
+// );
+
+// $total_logs = (int) $wpdb->get_var(
+//     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_email_logs"
+// );
 
 $success = (int) $wpdb->get_var(
     "SELECT COUNT(*) FROM {$wpdb->prefix}pushpa_email_logs
@@ -56,25 +76,50 @@ if ($total_logs > 0) {
     );
 
 }
-$smtp = $wpdb->get_row(
-    "SELECT * FROM {$wpdb->prefix}pushpa_smtp
-    WHERE status='Active'
-    LIMIT 1"
-);
 
-$recent_campaigns = $wpdb->get_results(
-    "SELECT campaign_name,status,sent_count,failed_count,created_at
-    FROM {$wpdb->prefix}pushpa_campaigns
-    ORDER BY id DESC
-    LIMIT 5"
-);
+$open_rate = 0;
+$click_rate = 0;
 
-$recent_logs = $wpdb->get_results(
-    "SELECT email,status,sent_at
-    FROM {$wpdb->prefix}pushpa_email_logs
-    ORDER BY id DESC
-    LIMIT 10"
-);
+if ($total_logs > 0) {
+
+    $open_rate = round(
+        ($total_opened / $total_logs) * 100,
+        2
+    );
+
+    $click_rate = round(
+        ($total_clicked / $total_logs) * 100,
+        2
+    );
+}
+// $smtp = $wpdb->get_row(
+//     "SELECT * FROM {$wpdb->prefix}pushpa_smtp
+//     WHERE status='Active'
+//     LIMIT 1"
+// );
+
+// $recent_campaigns = $wpdb->get_results(
+//     "SELECT campaign_name,status,sent_count,failed_count,created_at
+//     FROM {$wpdb->prefix}pushpa_campaigns
+//     ORDER BY id DESC
+//     LIMIT 5"
+// );
+
+// $recent_logs = $wpdb->get_results(
+//     "SELECT email,status,sent_at
+//     FROM {$wpdb->prefix}pushpa_email_logs
+//     ORDER BY id DESC
+//     LIMIT 10"
+// );
+
+$smtp = PEM_Dashboard::smtp();
+
+$recent_campaigns = PEM_Dashboard::recentCampaigns();
+
+$recent_logs = PEM_Dashboard::recentLogs();
+
+$campaign_reports = PEM_Dashboard::campaignReports();
+
 
 ?>
 
@@ -97,6 +142,7 @@ Welcome,
 <?php
 
 $cards = array(
+    
 
 array("👥 Total Contacts", $total_contacts, "#2271b1"),
 array("📧 Templates", $total_templates, "#673ab7"),
@@ -115,9 +161,18 @@ array(
     "📤 SMTP",
     $smtp ? "Connected" : "Not Configured",
     $smtp ? "#4CAF50" : "#f44336"
-)
+),
+array("👁 Total Opens", $total_opened, "#2196F3"),
 
+array("🖱 Total Clicks", $total_clicked, "#9C27B0"),
+
+array("🚫 Unsubscribed", $total_unsubscribed, "#F44336"),
+array("📈 Open Rate", $open_rate . "%", "#03A9F4"),
+
+array("📊 Click Rate", $click_rate . "%", "#8BC34A"),
 );
+
+
 
 foreach($cards as $card){
 
@@ -150,6 +205,34 @@ font-weight:bold;">
 
 <?php } ?>
 
+<div class="postbox" style="padding:20px;margin-bottom:20px;width:100%;">
+
+    <h2>Email Analytics</h2>
+
+    <div style="height:350px;">
+        <canvas id="pemAnalyticsChart"></canvas>
+    </div>
+
+</div>
+
+<div class="postbox" style="padding:20px;margin-top:20px;width:100%;">
+
+    <h2>Campaign Status</h2>
+
+    <div style="height:350px;">
+        <canvas id="pemCampaignChart"></canvas>
+    </div>
+
+</div>
+<div class="postbox" style="padding:20px;margin-top:20px;width:100%;">
+
+    <h2>Last 7 Days Email Activity</h2>
+
+    <div style="height:350px;">
+        <canvas id="pemActivityChart"></canvas>
+    </div>
+
+</div>
 </div>
 
 <br>
@@ -179,6 +262,8 @@ font-weight:bold;">
 </thead>
 
 <tbody>
+
+
 
 <?php if($recent_campaigns){ ?>
 
@@ -297,6 +382,52 @@ No Email Logs Found
 </tbody>
 
 </table>
+
+</div>
+
+<div class="postbox" style="margin-top:20px;">
+
+    <h2 style="padding:15px;">📊 Campaign Reports</h2>
+
+    <table class="widefat striped">
+
+        <thead>
+            <tr>
+                <th>Campaign</th>
+                <th>Sent</th>
+                <th>Failed</th>
+                <th>Status</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+        <?php foreach ($campaign_reports as $report) : ?>
+
+            <tr>
+
+                <td>
+    <a href="<?php echo admin_url('admin.php?page=pushpa-campaign-details&id=' . absint($report->id)); ?>">
+        <?php echo esc_html($report->campaign_name); ?>
+    </a>
+</td>
+
+                <td><?php echo esc_html($report->sent_count); ?></td>
+
+                <td><?php echo esc_html($report->failed_count); ?></td>
+
+                <td><?php echo esc_html($report->status); ?></td>
+
+                <td><?php echo esc_html($report->created_at); ?></td>
+
+            </tr>
+
+        <?php endforeach; ?>
+
+        </tbody>
+
+    </table>
 
 </div>
 

@@ -63,6 +63,48 @@ function pem_send_test_email()
     |--------------------------------------------------------------------------
     */
 
+// $contact = new stdClass();
+
+// $contact->name = 'Amrendra';
+// $contact->email = $email;
+// $contact->phone = '';
+// $contact->company = '';
+
+// // echo "<pre>";
+// // echo $template->email_body;
+// // echo "</pre>";
+// // exit;
+
+// $sent = PEM_Mailer::send(
+//     $email,
+//     $campaign->subject,
+//     $template->email_body,
+//     $contact
+// );
+
+//     /*
+//     |--------------------------------------------------------------------------
+//     | Save Email Log
+//     |--------------------------------------------------------------------------
+//     */
+
+//     $status = $sent ? 'Success' : 'Failed';
+
+//     $log_saved = PEM_Email_Log::save(
+//         $campaign->id,
+//         0,
+//         $email,
+//         $campaign->subject,
+//         $status
+//     );
+
+
+/*
+|--------------------------------------------------------------------------
+| Send Email
+|--------------------------------------------------------------------------
+*/
+
 $contact = new stdClass();
 
 $contact->name = 'Amrendra';
@@ -70,33 +112,53 @@ $contact->email = $email;
 $contact->phone = '';
 $contact->company = '';
 
-// echo "<pre>";
-// echo $template->email_body;
-// echo "</pre>";
-// exit;
+/*
+|--------------------------------------------------------------------------
+| Create Email Log First
+|--------------------------------------------------------------------------
+*/
+
+$log_id = PEM_Email_Log::save(
+    $campaign->id,
+    0,
+    $email,
+    $campaign->subject,
+    'Pending'
+);
+
+/*
+|--------------------------------------------------------------------------
+| Send Email
+|--------------------------------------------------------------------------
+*/
 
 $sent = PEM_Mailer::send(
     $email,
     $campaign->subject,
     $template->email_body,
-    $contact
+    $contact,
+    $log_id
 );
 
-    /*
-    |--------------------------------------------------------------------------
-    | Save Email Log
-    |--------------------------------------------------------------------------
-    */
+/*
+|--------------------------------------------------------------------------
+| Update Email Log Status
+|--------------------------------------------------------------------------
+*/
 
-    $status = $sent ? 'Success' : 'Failed';
+global $wpdb;
 
-    $log_saved = PEM_Email_Log::save(
-        $campaign->id,
-        0,
-        $email,
-        $campaign->subject,
-        $status
-    );
+$wpdb->update(
+    $wpdb->prefix . 'pushpa_email_logs',
+    array(
+        'status' => $sent ? 'Success' : 'Failed'
+    ),
+    array(
+        'id' => $log_id
+    ),
+    array('%s'),
+    array('%d')
+);
 
     /*
     |--------------------------------------------------------------------------
@@ -123,16 +185,16 @@ $sent = PEM_Mailer::send(
     |--------------------------------------------------------------------------
     */
 
-    if (!$log_saved) {
+    // if (!$log_saved) {
 
-        global $wpdb;
+    //     global $wpdb;
 
-        echo '<div class="notice notice-warning">
-                <p><strong>Email Log Error:</strong> ' .
-                esc_html($wpdb->last_error) .
-                '</p>
-              </div>';
-    }
+    //     echo '<div class="notice notice-warning">
+    //             <p><strong>Email Log Error:</strong> ' .
+    //             esc_html($wpdb->last_error) .
+    //             '</p>
+    //           </div>';
+    // }
 }
 
 add_action('admin_init', 'pem_send_test_email');

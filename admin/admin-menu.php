@@ -135,6 +135,25 @@ function pem_admin_menu()
         'pushpa-settings',
         'pem_settings_page'
     );
+    add_submenu_page(
+
+    null,
+
+    'Campaign Details',
+
+    'Campaign Details',
+
+    'manage_options',
+
+    'pushpa-campaign-details',
+
+    function () {
+
+        require_once PEM_PATH . 'admin/pages/campaign-details.php';
+
+    }
+
+);
 }
 
 add_action('admin_menu', 'pem_admin_menu');

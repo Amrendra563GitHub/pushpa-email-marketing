@@ -28,6 +28,8 @@ define('PEM_VERSION', '1.0.0');
 require_once PEM_PATH . 'includes/class-contact.php';
 require_once PEM_PATH . 'includes/class-template.php';
 require_once PEM_PATH . 'includes/class-campaign.php';
+require_once PEM_PATH . 'includes/class-dashboard.php';
+require_once PEM_PATH . 'includes/class-report.php';
 require_once PEM_PATH . 'includes/class-database.php';
 require_once PEM_PATH . 'includes/class-helper.php';
 require_once PEM_PATH . 'includes/class-settings.php';
@@ -83,21 +85,39 @@ require_once PEM_PATH . 'database/create-email-log-table.php';
 require_once PEM_PATH . 'database/create-settings-table.php';
 require_once PEM_PATH . 'database/create-smtp-table.php';
 
+// register_activation_hook(__FILE__, function () {
+
+//     pem_create_contacts_table();
+
+//     pem_create_templates_table();
+
+//     pem_create_campaigns_table();
+
+//     pem_create_email_logs_table();
+
+//     pem_create_settings_table();
+
+//     pem_create_smtp_table();
+
+//     PEM_Scheduler::activate();
+
+// });
+
 register_activation_hook(__FILE__, function () {
+
+    ob_start();
 
     pem_create_contacts_table();
 
-    pem_create_templates_table();
+    $output = ob_get_clean();
 
-    pem_create_campaigns_table();
+    if ($output !== '') {
 
-    pem_create_email_logs_table();
-
-    pem_create_settings_table();
-
-    pem_create_smtp_table();
-
-    PEM_Scheduler::activate();
+        file_put_contents(
+            WP_CONTENT_DIR . '/pem-activation-output.txt',
+            $output
+        );
+    }
 
 });
 
@@ -106,3 +126,161 @@ register_deactivation_hook(__FILE__, function () {
     PEM_Scheduler::deactivate();
 
 });
+
+/*
+|--------------------------------------------------------------------------
+| Admin Assets
+|--------------------------------------------------------------------------
+*/
+
+// function pem_admin_assets($hook)
+// {
+//     // Sirf Pushpa Email Dashboard par load hoga
+//     if ($hook !== 'toplevel_page_pushpa-email') {
+//         return;
+//     }
+
+//     wp_enqueue_script(
+//         'chart-js',
+//         'https://cdn.jsdelivr.net/npm/chart.js',
+//         array(),
+//         '4.5.0',
+//         true
+//     );
+
+//     wp_enqueue_script(
+//         'pem-dashboard',
+//         PEM_URL . 'assets/js/dashboard.js',
+//         array('chart-js'),
+//         PEM_VERSION,
+//         true
+//     );
+// }
+
+// add_action('admin_enqueue_scripts', 'pem_admin_assets');
+
+
+/*
+|--------------------------------------------------------------------------
+| Dashboard Assets
+|--------------------------------------------------------------------------
+*/
+
+function pem_dashboard_assets($hook)
+{
+    if ($hook !== 'toplevel_page_pushpa-email') {
+        return;
+    }
+
+    wp_enqueue_script(
+        'chart-js',
+        'https://cdn.jsdelivr.net/npm/chart.js',
+        array(),
+        '4.5.0',
+        true
+    );
+
+    wp_enqueue_script(
+        'pem-dashboard',
+        PEM_URL . 'assets/js/dashboard.js',
+        array('chart-js'),
+        PEM_VERSION,
+        true
+    );
+
+    $status = PEM_Dashboard::campaignStatus();
+    $activity = PEM_Dashboard::emailActivity();
+
+    wp_localize_script(
+        'pem-dashboard',
+        'pemDashboard',
+        array(
+
+        'opens' => PEM_Email_Log::totalOpened(),
+        'clicks' => PEM_Email_Log::totalClicked(),
+        'unsubscribed' => PEM_Email_Log::totalUnsubscribed(),
+
+        'running' => $status['running'],
+        'completed' => $status['completed'],
+        'draft' => $status['draft'],
+        'activity' => $activity
+
+    )
+    );
+    
+    
+}
+
+add_action('admin_enqueue_scripts', 'pem_dashboard_assets');
+/*
+|--------------------------------------------------------------------------
+| Email Open Tracking
+|--------------------------------------------------------------------------
+*/
+
+add_action('init', function () {
+
+    if (!isset($_GET['pem_open'])) {
+        return;
+    }
+
+    $log_id = absint($_GET['pem_open']);
+
+    if ($log_id <= 0) {
+        return;
+    }
+
+    PEM_Email_Log::markOpened($log_id);
+
+    // Transparent 1x1 GIF
+    header('Content-Type: image/gif');
+
+    echo base64_decode(
+        'R0lGODlhAQABAPAAAAAAAAAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw=='
+    );
+
+    exit;
+
+    
+});
+
+/*
+|--------------------------------------------------------------------------
+| Email Click Tracking
+|--------------------------------------------------------------------------
+*/
+
+add_action('init', function () {
+
+    if (!isset($_GET['pem_click'])) {
+        return;
+    }
+
+    $log_id = absint($_GET['pem_click']);
+
+    if ($log_id <= 0) {
+        return;
+    }
+
+    PEM_Email_Log::markClicked($log_id);
+
+    $url = isset($_GET['url'])
+        ? rawurldecode($_GET['url'])
+        : home_url('/');
+
+    wp_redirect(esc_url_raw($url));
+    exit;
+
+});
+/*
+|--------------------------------------------------------------------------
+| Export Campaign CSV
+|--------------------------------------------------------------------------
+*/
+
+add_action(
+    'admin_post_pem_export_campaign_csv',
+    ['PEM_Report', 'exportCampaignCSV']
+);
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
